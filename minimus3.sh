@@ -46,7 +46,7 @@ if [ "$ALIGNER" == "bwa" ] ; then
   if [ ! -s ${PREFIX}.srt.sam ];    then grep ^@ ${PREFIX}.sam  >  ${PREFIX}.srt.sam ; egrep -v "^\@|^\[" ${PREFIX}.sam  | sort -k1,1 -k3,3 >> ${PREFIX}.srt.sam ; fi
   if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.srt.sam | ${SCRIPT}/sam2delta.pl -ni > ${PREFIX}.delta ; fi
 elif  [ "$ALIGNER" == "minimap2" ]; then
-  if [ ! -s ${PREFIX}.delta   ];    then ${BIN}/minimap2 -k ${KMER} -w5 -Xp0 -m ${MINALIGN} -g10000 --max-chain-skip 25 -a ${PREFIX}.fa  ${PREFIX}.fa -t ${THREADS} -a > ${PREFIX}.sam ; fi
+  if [ ! -s ${PREFIX}.sam   ];      then ${BIN}/minimap2 -k ${KMER} -w5 -Xp0 -m ${MINALIGN} -g10000 --max-chain-skip 25 -a ${PREFIX}.fa  ${PREFIX}.fa -t ${THREADS} -a > ${PREFIX}.sam ; fi
   if [ ! -s ${PREFIX}.srt.sam ];    then grep ^@ ${PREFIX}.sam  >  ${PREFIX}.srt.sam ; egrep -v "^\@|^\[" ${PREFIX}.sam  | sort -k1,1 -k3,3 >> ${PREFIX}.srt.sam ; fi
   if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.srt.sam | ${SCRIPT}/sam2delta.pl -ni > ${PREFIX}.delta ; fi
 elif  [ "$ALIGNER" == "minimap" ];  then
@@ -100,6 +100,10 @@ cat ${PREFIX}.fa | ${SCRIPT}/fasta-filter.pl -n -f ${PREFIX}.delete > ${PREFIX}.
 
 #identify overlapping sequences => links
 cat ${PREFIX}.clean.coords | ${SCRIPT}/coords2link.pl |  sort -nk3 | ${SCRIPT}/uniq2.pl -i 0 -j 1  > ${PREFIX}.link
+
+if [ ! -s ${PREFIX}.link ] ; then
+  exit 0
+fi 
 
 #identify redundant links
 #cat ${PREFIX}.link | perl -ane ' $p=$1 if($h{$F[0]}=~/^(.+)\.\d$/);  print "$p $_" if($h{$F[0]} and $h{$F[1]} and $h{$F[0]} ne $h{$F[1]} and $h{$F[1]}=~/^$p\.\d$/); $h{$F[0]}=$F[1] unless($h{$F[0]}); $h{$F[1]}=$F[0] unless($h{$F[1]});'  | \
