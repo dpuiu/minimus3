@@ -1,1 +1,1 @@
-../tranScaff/uniq2.pl
+../uniq2.pl
