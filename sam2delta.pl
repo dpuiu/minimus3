@@ -1,1 +1,0 @@
-../NGS/sam2delta.pl
