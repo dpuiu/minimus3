@@ -1,4 +1,5 @@
-Example
+Example:
+
  test -f all.fa
  
  test -f all.len
