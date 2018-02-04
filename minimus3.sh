@@ -13,7 +13,7 @@ PREFIX=ref
 THREADS=16
 MAXTRIM=10000
 
-BIN=/ccb/salz7-data/sw/bin/    #~dpuiu//sw/bin/
+BIN=/ccb/salz7-data/sw/bin/  
 SCRIPT=~dpuiu/bin/minimus3/
 
 #------------------------------------------------------------------------------#
@@ -49,7 +49,7 @@ elif  [ "$ALIGNER" == "minimap2" ]; then
   if [ ! -s ${PREFIX}.paf   ];      then ${BIN}/minimap2 -k ${KMER} -w5 -Xp0 -m ${MINALIGN} -g10000 --max-chain-skip 25 ${PREFIX}.fa  ${PREFIX}.fa -t ${THREADS} > ${PREFIX}.paf ; fi
   if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.paf  | sort -k1,1 -k6,6 -k8,8n -k9,9nr | perl -ane ' if(@P and $P[0] eq $F[0] and $P[5] eq $F[5] and $F[8]<=$P[8]) {} else { print ; @P=@F };' | ${SCRIPT}/paf2delta.pl -rf ${PREFIX}.fa -qf ${PREFIX}.fa > ${PREFIX}.delta  ;  fi
 elif  [ "$ALIGNER" == "nucmer" ] ;  then
-  if [ ! -s ${PREFIX}.delta ];      then ${SCRIPT}/nucmer -t ${THREADS} -l ${KMER} -c ${MINALIGN} --maxmatch --nosimplify ${PREFIX}.fa ${PREFIX}.fa -p ${PREFIX} ; fi
+  if [ ! -s ${PREFIX}.delta ];      then ${BIN}/nucmer -t ${THREADS} -l ${KMER} -c ${MINALIGN} --maxmatch --nosimplify ${PREFIX}.fa ${PREFIX}.fa -p ${PREFIX} ; fi
 else
   exit 1
 fi
