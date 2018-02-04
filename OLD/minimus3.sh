@@ -46,7 +46,13 @@ if [ "$ALIGNER" == "bwa" ] ; then
   if [ ! -s ${PREFIX}.srt.sam ];    then grep ^@ ${PREFIX}.sam  >  ${PREFIX}.srt.sam ; egrep -v "^\@|^\[" ${PREFIX}.sam  | sort -k1,1 -k3,3 >> ${PREFIX}.srt.sam ; fi
   if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.srt.sam | ${SCRIPT}/sam2delta.pl -ni > ${PREFIX}.delta ; fi
 elif  [ "$ALIGNER" == "minimap2" ]; then
+#  if [ ! -s ${PREFIX}.sam   ];      then ${BIN}/minimap2 -k ${KMER} -w5 -Xp0 -m ${MINALIGN} -g10000 --max-chain-skip 25 -a ${PREFIX}.fa  ${PREFIX}.fa -t ${THREADS} -a > ${PREFIX}.sam ; fi
+#  if [ ! -s ${PREFIX}.srt.sam ];    then grep ^@ ${PREFIX}.sam  >  ${PREFIX}.srt.sam ; egrep -v "^\@|^\[" ${PREFIX}.sam  | sort -k1,1 -k3,3 >> ${PREFIX}.srt.sam ; fi
+#  if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.srt.sam | ${SCRIPT}/sam2delta.pl -ni > ${PREFIX}.delta ; fi
   if [ ! -s ${PREFIX}.paf   ];      then ${BIN}/minimap2 -k ${KMER} -w5 -Xp0 -m ${MINALIGN} -g10000 --max-chain-skip 25 ${PREFIX}.fa  ${PREFIX}.fa -t ${THREADS} > ${PREFIX}.paf ; fi
+  if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.paf  | sort -k1,1 -k6,6 -k8,8n -k9,9nr | perl -ane ' if(@P and $P[0] eq $F[0] and $P[5] eq $F[5] and $F[8]<=$P[8]) {} else { print ; @P=@F };' | ${SCRIPT}/paf2delta.pl -rf ${PREFIX}.fa -qf ${PREFIX}.fa > ${PREFIX}.delta  ;  fi
+elif  [ "$ALIGNER" == "minimap" ];  then
+  if [ ! -s ${PREFIX}.paf  ];       then ${BIN}/minimap -Sw5 -L ${MINALIGN} -m0 -t ${THREADS} ${PREFIX}.fa ${PREFIX}.fa > ${PREFIX}.paf ; fi 
   if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.paf  | sort -k1,1 -k6,6 -k8,8n -k9,9nr | perl -ane ' if(@P and $P[0] eq $F[0] and $P[5] eq $F[5] and $F[8]<=$P[8]) {} else { print ; @P=@F };' | ${SCRIPT}/paf2delta.pl -rf ${PREFIX}.fa -qf ${PREFIX}.fa > ${PREFIX}.delta  ;  fi
 elif  [ "$ALIGNER" == "nucmer" ] ;  then
   if [ ! -s ${PREFIX}.delta ];      then ${SCRIPT}/nucmer -t ${THREADS} -l ${KMER} -c ${MINALIGN} --maxmatch --nosimplify ${PREFIX}.fa ${PREFIX}.fa -p ${PREFIX} ; fi
@@ -76,9 +82,13 @@ if [ ! -s ${PREFIX}.filter.coords ]; then
 fi
 
 #identify CONTAINED sequences
+#cat ${PREFIX}.filter.coords | egrep "CONTAIN|IDENTITY" | perl -ane 'print "$F[16]\n$F[17]\n";' | ${SCRIPT}/count.pl  > ${PREFIX}.filter.count
 cat ${PREFIX}.filter.coords | egrep "CONTAIN|IDENTITY" | perl -ane 'print $F[16],"\t",$F[6]*$F[9],"\n",$F[17],"\t",$F[7]*$F[9],"\n";'  | ${SCRIPT}/count2.pl -i 0 -j 1 > ${PREFIX}.filter.count
 cat ${PREFIX}.filter.coords | grep "CONTAIN"  | ${SCRIPT}/coords2delete.pl > ${PREFIX}.delete
 cat ${PREFIX}.filter.coords | grep "IDENTITY" | ${SCRIPT}/difference.pl -i 16 - ${PREFIX}.delete | ${SCRIPT}/difference.pl -i 17 - ${PREFIX}.delete | ${SCRIPT}/join.pl - ${PREFIX}.filter.count -i 16 | ${SCRIPT}/join.pl - ${PREFIX}.filter.count -i 17 | ${SCRIPT}/coords2delete.pl >> ${PREFIX}.delete
+
+##cat ${PREFIX}.filter.coords | perl -ane ' @F[3,4]=@F[4,3] if($F[3]>$F[4]); $F[0]--; $F[3]--; if($F[11]>$F[12] or $F[11]==$F[12] and $F[16] gt $F[17]) { print join "\t",@F[17,3,4] } else { print join "\t",@F[16,0,1] } ; print "\n"; ' | \
+##  bedtools sort | bedtools merge |  bed2bed.pl | sum2.pl -i 0 -j -2 | ${SCRIPT}/join.pl ${PREFIX}.len - | perl -ane 'print if($F[2]/$F[1]>(1-2*$ENV{MAXPC}));' >> ${PREFIX}.delete
 
 #clean coords file
 cat ${PREFIX}.filter.coords | ${SCRIPT}/difference.pl -i 16 - ${PREFIX}.delete | ${SCRIPT}/difference.pl -i 17 - ${PREFIX}.delete > ${PREFIX}.clean.coords
@@ -91,6 +101,12 @@ cat ${PREFIX}.clean.coords | ${SCRIPT}/coords2link.pl |  sort -nk3 | ${SCRIPT}/u
 
 #exit if no links
 if [ ! -s ${PREFIX}.link ] ; then exit 0 ; fi 
+
+#identify redundant links
+#cat ${PREFIX}.link | perl -ane ' $p=$1 if($h{$F[0]}=~/^(.+)\.\d$/);  print "$p $_" if($h{$F[0]} and $h{$F[1]} and $h{$F[0]} ne $h{$F[1]} and $h{$F[1]}=~/^$p\.\d$/); $h{$F[0]}=$F[1] unless($h{$F[0]}); $h{$F[1]}=$F[0] unless($h{$F[1]});'  | \
+#  join.pl - ${PREFIX}.len  >> ${PREFIX}.delete
+#cat ${PREFIX}.filter.coords | ${SCRIPT}/difference.pl -i 16 - ${PREFIX}.delete | ${SCRIPT}/difference.pl -i 17 - ${PREFIX}.delete > ${PREFIX}.clean.coords
+#cat ${PREFIX}.clean.coords  | ${SCRIPT}/coords2link.pl |  sort -nk3 | ${SCRIPT}/uniq2.pl -i 0 -j 1  > ${PREFIX}.link
 
 #delete ambiguous links
 cat ${PREFIX}.link | perl -ane 'print "$F[0]\t$F[2]\n$F[1]\t$F[2]\n";' | perl -ane 'if(!$h{$F[0]}) { $h{$F[0]}=$F[1] } elsif($h{$F[0]}==$F[1]) { print }' | sort -u > ${PREFIX}.link.delete

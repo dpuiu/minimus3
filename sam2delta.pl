@@ -138,13 +138,15 @@ MAIN:
                        	{
                                 $qry_end+=$1;
                                	$snps+=$1;
-				$snpsDetail.="-$snpsMatch\n"."-1\n"x($1-1); 
+				$snpsDetail.="-$snpsMatch\n" if($snpsMatch); 
+				$snpsDetail.="-1\n"x($1-1); 
                         }
                       	elsif($2 eq "D")   
                        	{
                                 $ref_end+=$1;
 				$snps+=$1;
-				$snpsDetail.="$snpsMatch\n"."1\n"x($1-1); 
+				$snpsDetail.="$snpsMatch\n" if($snpsMatch);
+                                $snpsDetail.="1\n"x($1-1); 
                        	}
                         elsif($2 eq "N")   
                         {
