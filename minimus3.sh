@@ -47,7 +47,8 @@ if [ "$ALIGNER" == "bwa" ] ; then
   if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.srt.sam | ${SCRIPT}/sam2delta.pl -ni > ${PREFIX}.delta ; fi
 elif  [ "$ALIGNER" == "minimap2" ]; then
   if [ ! -s ${PREFIX}.paf   ];      then ${BIN}/minimap2 -k ${KMER} -w5 -Xp0 -m ${MINALIGN} -g10000 --max-chain-skip 25 ${PREFIX}.fa  ${PREFIX}.fa -t ${THREADS} > ${PREFIX}.paf ; fi
-  if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.paf  | sort -k1,1 -k6,6 -k8,8n -k9,9nr | perl -ane ' if(@P and $P[0] eq $F[0] and $P[5] eq $F[5] and $F[8]<=$P[8]) {} else { print ; @P=@F };' | ${SCRIPT}/paf2delta.pl -rf ${PREFIX}.fa -qf ${PREFIX}.fa > ${PREFIX}.delta  ;  fi
+  if [ ! -s ${PREFIX}.srt.paf ];    then cat ${PREFIX}.paf | sort -k1,1 -k6,6 -k8,8n -k9,9nr > ${PREFIX}.srt.paf  ; fi
+  if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.srt.paf | perl -ane ' unless(@P and $P[0] eq $F[0] and $P[5] eq $F[5] and $F[8]<=$P[8]) { print ; @P=@F };' | ${SCRIPT}/paf2delta.pl -rf ${PREFIX}.fa -qf ${PREFIX}.fa -ni > ${PREFIX}.delta  ;  fi
 elif  [ "$ALIGNER" == "nucmer" ] ;  then
   if [ ! -s ${PREFIX}.delta ];      then ${BIN}/nucmer -t ${THREADS} -l ${KMER} -c ${MINALIGN} --maxmatch --nosimplify ${PREFIX}.fa ${PREFIX}.fa -p ${PREFIX} ; fi
 else

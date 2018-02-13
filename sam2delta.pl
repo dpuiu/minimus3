@@ -25,7 +25,10 @@ MAIN:
 		"ni"		    =>	    \$options{ni},	# skip ref=qry
 		"i|min_identity=i"  =>      \$options{min_identity},
                 "q|min_mapQuality"  =>	    \$options{min_mapQuality},
-		"offset"	    =>      \$options{offset}	
+		"offset"	    =>      \$options{offset},
+		"qd|qrr_len_default=i"  =>	\$options{qry_len_default},
+                "suffix" => \$options{suffix},
+	
 	);
 	die "ERROR: $! " if (!$result);
 	die "ERROR: $! " if (defined($options{identity}) and ($options{identity}<0 or $options{identity}>100));
@@ -33,10 +36,13 @@ MAIN:
 
 	####################################
 
-	if($options{ref_file})
+	if($options{ref_file} and $options{qry_file})
 	{
 		print $options{ref_file}," ",$options{qry_file},"\n","NUCMER","\n";
+	}
 
+	if($options{ref_len})
+	{
 		open(IN,$options{ref_len}) or die $!;
 		while(<IN>)
 		{
@@ -44,7 +50,10 @@ MAIN:
 			$ref_len{$f[0]}=$f[1];
 		}
 		close(IN);
+	}
 
+	if($options{qry_len})
+	{
 	        open(IN,$options{qry_len}) or die $!;
         	while(<IN>)
 	        {
@@ -70,7 +79,7 @@ MAIN:
 			elsif(/^\@SQ\s+SN:(\S+)\s+LN:(\d+)/)
 			{
 				$ref_len{$1}=$2 if(!$ref_len{$1});
-				$qry_len{$1}=$2 if(!$qry_len{$1});
+				$qry_len{$1}=$2 if($options{ni} and !$qry_len{$1});
         		}
 			next;
 		}
@@ -85,18 +94,22 @@ MAIN:
 
                 next if($f[1] &  0x4 );
                 next if($f[2] eq "*");
-		#next if($f[1] and $f[1] & 0x100);       # secondary alignment: meeded mby minmap all vs all
+		#next if($f[1] and $f[1] & 0x100);       # secondary alignment: needed by minmap all vs all
                 next if(defined($options{min_mapQuality}) and $f[4]<$options{min_mapQuality});
 
                 $qry=$f[0];
+                if($options{suffix})
+                {
+			if($f[1]&0x40) { $qry.="/1" }
+			else           { $qry.="/2" }
+                }
 		$ref=$f[2];
-
 		next if($options{ni} and $qry eq $ref);
 
                 $qry_dir=($f[1] & 0x10 )?"-":"+";       # $f[1]: 0x10 SEQ being reverse complemented
                 $ref_begin=$ref_end=$f[3]-1;            # $f[3]: 1-based leftmost mapping POSition
-                $cigar=$f[5];
 
+                $cigar=$f[5];
 		if($qry_dir eq "-")
 		{
 			my $newCigar="";
@@ -163,11 +176,16 @@ MAIN:
 		($qry_begin,$qry_end)=($qry_end,$qry_begin) if($qry_dir eq "-");
 		($qry_begin,$qry_end,$qry)=($qry_begin+$2,$qry_end+$2,$1) if($options{offset} and $qry=~/(.+):(\d+)-(\d+)$/);
 
-		if($ref_begin>=0 and $ref_end<=$ref_len{$ref} and $qry_begin>=0 and $qry_end>=0 and $qry_begin<=$qry_len{$qry} and $qry_end<=$qry_len{$qry})
+		my $qry_len;
+                if($qry_len{$qry}) {$qry_len=$qry_len{$qry}}
+                elsif($options{qry_len_default}) { $qry_len=$options{qry_len_default} }
+                else { die "ERROR: $qry len undefined\n" }
+
+		if($ref_begin>=0 and $ref_end<=$ref_len{$ref} and $qry_begin>=0 and $qry_end>=0 and $qry_begin<=$qry_len and $qry_end<=$qry_len)
 		{
 			if(!defined($pref) or $pref ne $ref or $pqry ne $qry)
 			{
-				print join " ",(">".$ref,$qry,$ref_len{$ref},$qry_len{$qry}); print "\n";
+				print join " ",(">".$ref,$qry,$ref_len{$ref},$qry_len); print "\n";
 				($pref,$pqry)=($ref,$qry);
 			}
 			print join " ",($ref_begin,$ref_end,$qry_begin,$qry_end,$snps,$snps,0); print "\n";
