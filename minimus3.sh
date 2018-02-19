@@ -5,7 +5,7 @@ MINALIGN=255
 export MAXPC=0.05
 MINGAP=-1000
 MAXGAP=40000
-MINID=90		# 90: minimap2 ; 94: minimap2 -a; 97:nucmer
+MINID=60		# 60/90: minimap2 ; 94: minimap2 -a; 97:nucmer
 KMER=31
 MERGEOUT=merge-1
 MERGEPREFIX=merge-1
@@ -41,8 +41,8 @@ test -f ${PREFIX}.len
 
 #align using "bwa mem" or "nucmer -maxmatch" => ${PREFIX}.delta
 if [ "$ALIGNER" == "bwa" ] ; then
-  if [ ! -s ${PREFIX}.bwt ];        then ${SCRIPT}/bwa index -p ${PREFIX} ${PREFIX}.fa ; fi
-  if [ ! -s ${PREFIX}.sam ];        then ${SCRIPT}/bwa mem -k ${KMER} -t ${THREADS} -v 1 -e ${PREFIX} ${PREFIX}.fa | ${SCRIPT}/sam2sam.pl > ${PREFIX}.sam ; fi 
+  if [ ! -s ${PREFIX}.bwt ];        then ${BIN}/bwa index -p ${PREFIX} ${PREFIX}.fa ; fi
+  if [ ! -s ${PREFIX}.sam ];        then ${BIN}/bwa mem -k ${KMER} -t ${THREADS} -v 1 -e ${PREFIX} ${PREFIX}.fa | ${SCRIPT}/sam2sam.pl > ${PREFIX}.sam ; fi 
   if [ ! -s ${PREFIX}.srt.sam ];    then grep ^@ ${PREFIX}.sam  >  ${PREFIX}.srt.sam ; egrep -v "^\@|^\[" ${PREFIX}.sam  | sort -k1,1 -k3,3 >> ${PREFIX}.srt.sam ; fi
   if [ ! -s ${PREFIX}.delta   ];    then cat ${PREFIX}.srt.sam | ${SCRIPT}/sam2delta.pl -ni > ${PREFIX}.delta ; fi
 elif  [ "$ALIGNER" == "minimap2" ]; then
